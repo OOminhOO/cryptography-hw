@@ -1,3 +1,4 @@
+
 # 📚 암호학 기본 개념 정리 (IoT/엣지 초급용) + 경량암호 & PRESENT 한눈에 보기
 
 ## 📌 목차
@@ -16,6 +17,14 @@
 12. [Feistel vs SPN 구조](#12-feistel-vs-spn-구조)
 13. [부채널 공격 개요](#13-부채널-공격-개요)
 14. [경량 블록암호 소개 및 PRESENT](#14-경량-블록암호-소개-및-present)
+15. [동형암호 (Homomorphic Encryption)](#15-동형암호-homomorphic-encryption)
+16. [마무리 및 향후 계획](#16-마무리-및-향후-계획)
+17. [참고 링크](#17-참고-링크)
+
+...
+
+...
+
 
 ---
 
@@ -352,31 +361,127 @@
 
 ---
 
-## 14. 동형암호 (Homomorphic Encryption)
 
-동형암호는 **암호화된 상태에서도 연산이 가능한 암호 기술**이다. 즉, 데이터를 복호화하지 않고도 연산 결과를 얻을 수 있다.
+## 14. 경량 블록암호 소개 및 PRESENT
 
-### ✨ 장점
+경량 블록암호(Lightweight Block Cipher)는 **제약 환경**(작은 면적, 낮은 소비 전력, 적은 메모리, 저지연 등)에 최적화된 암호 알고리즘이다. 특히 IoT, 웨어러블, 센서 등 자원이 부족한 장치에 적합하다.
 
-* 클라우드 연산, 데이터 분석, 머신러닝 등에서 개인 정보를 노출시키지 않고 연산 가능
+### 🔧 경량 블록암호 설계 특징
 
-### 🔐 예시
+* **단순한 연산** 위주: S-box 크기 축소, 회전·XOR·AND 조합 등
+* **직렬화(serial)** 구조로 구현 면적 최소화 가능
+* **짧은 키 길이**나 블록 크기 채택: 예) 64-bit 블록, 80/128-bit 키
+* **보안성과 효율성 간 균형** 중요: 낮은 자원 소모 + 공격 저항성
 
-* 어떤 암호문 C₁, C₂가 있을 때: `Dec(C₁ ⊕ C₂) = M₁ + M₂`
-* 대표 알고리즘: **Paillier, BGV, CKKS 등** (대부분 고속 연산보단 보안성에 중점)
+### 📌 대표 경량 블록암호
 
-### ⚠️ 단점
+| 이름          | 구조      | 블록 크기     | 키 크기           | 특징                         |
+| ----------- | ------- | --------- | -------------- | -------------------------- |
+| **PRESENT** | SPN     | 64bit     | 80/128bit      | NIST 추천, 초소형 구현, HW 적합     |
+| **SIMON**   | Feistel | 다양        | 다양             | ARX 구조, 하드웨어 친화            |
+| **SPECK**   | ARX     | 다양        | 다양             | SW 구현 최적화, 속도 빠름           |
+| **CHAM**    | ARX     | 64/128bit | 128/256bit     | 국산 경량 블록암호, 직렬 처리 유리       |
+| **LEA**     | ARX     | 128bit    | 128/192/256bit | 국산 고속 경량암호, 32bit CPU에 최적화 |
 
-* 매우 높은 연산량과 자원 소모
-* 실시간 암호 처리에는 부적합 (현재는 연구·비즈니스 특수 분야 한정 사용)
+---
 
->
+## ✅ PRESENT 구조 요약
 
->
-> * nonce는 1회용, 절대 중복 사용 금지
-> * GCM은 96bit nonce가 성능과 안전성에 가장 유리
-> * 무결성 필요 시 반드시 GCM, CCM, AEAD 등 사용
+PRESENT는 SPN 기반의 경량 블록 암호로, 초소형 하드웨어 구현이 가능하다. 64bit 블록과 80/128bit 키, 총 **31라운드**로 구성된다.
+
+### 🔍 암호화 라운드 구성
+
+1. **AddRoundKey**: 상태(State)와 라운드키 XOR
+2. **S-box Layer**: 4bit S-box 16개 병렬 적용 (비선형)
+3. **Permutation Layer**: 비트 위치 재배치
+
+> 마지막 라운드에는 S-box 없이 AddRoundKey만 수행 (화이트닝)
+
+### 🔑 키 스케줄 (Key Schedule)
+
+* 초기 키에서 각 라운드용 서브키 생성
+* 회전(Rot), S-box 적용, 라운드 상수 추가 등으로 구성
+* PRESENT-80은 80bit 키, PRESENT-128은 128bit 키 사용
+
+### ⚙️ 장점
+
+* **하드웨어 면적**이 매우 작음 (Gate 수 적음)
+* **직렬화 구현**에 유리
+* 단순 구조로 **분석 용이** (학습·연구에 적합)
+
+### ⚠️ 주의점
+
+* 64bit 블록은 **생일 공격 한계**가 빠르게 도달
+* 스트림 암호화(CTR 모드 등) 시 **nonce/카운터 관리** 철저 필요
+* AEAD(무결성 보장) 기능은 없음 → GCM/CCM 등과 병행 필요
 
 
+---
+
+## 15. 동형암호 (Homomorphic Encryption)
+
+**동형암호(Homomorphic Encryption)**는 데이터를 암호화한 상태로 연산이 가능한 암호 기술이다. 즉, 복호화하지 않고도 암호문끼리 연산하여, 복호화 결과가 평문 연산 결과와 동일해지는 성질을 가진다.
+
+> 📌 예: Enc(a) ⊕ Enc(b) = Enc(a + b)
+
+### ✅ 특징
+
+* 민감한 데이터를 외부에 노출하지 않고도 계산 가능 → **개인정보 보호**
+* 클라우드 연산, 머신러닝, 헬스케어 분석 등에 적합
+
+### 🔒 예시 알고리즘
+
+* **Paillier**: 덧셈 동형암호 (Additively Homomorphic)
+* **BGV, BFV, CKKS**: 완전 동형암호(FHE), 정수/실수/벡터 연산 지원
+
+### ⚠️ 한계점
+
+* 암호화/연산/복호화 시간이 매우 느림 (수천 배 이상)
+* 연산 중 노이즈 증가 → 일정 횟수 이상 연산 후 복호화 실패 가능
+* 아직은 실용 서비스보다는 **연구/특화 시스템**에서 사용됨
+
+### 🌐 활용 사례
+
+* 병원: 환자 정보를 암호화한 상태로 통계 분석
+* 금융: 사용자 거래 데이터를 복호화 없이 처리
+* 머신러닝: 암호화된 데이터를 학습에 직접 활용 (Privacy-Preserving ML)
+
+---
+
+## 16. IoT/FPGA 관점 정리 및 프로젝트 방향
+
+### ✅ IoT 보안 구현 핵심 요약
+
+* **AEAD 기본 채택**: AES-GCM (HW 가속) 또는 ASCON-AEAD128 (경량 환경)
+* **키 관리**: 제품화는 eFUSE, OTP, PUF, SE 등 활용
+* **IV/nonce**: 무조건 1회성 사용, 재사용 시 전체 보안 무력화
+* **무결성**: 태그 필수. AEAD 미사용 시, HMAC 별도 검증 필요
+* **하드웨어 설계 시**:
+
+  * RTL에 보안 블록 분리, 파이프라인 처리 고려
+  * 조건 분기 제거, 메모리 접근 패턴 고정 → 부채널 대응
+
+### 🎯 PRESENT 암호 기반 프로젝트 방향 예시
+
+* **구현 대상**: PRESENT-128 CTR mode with optional MAC
+* **목표**: 소면적 암호화 엔진 + AES-GCM 대비 경량 인증
+* **응용 시나리오**: 센서 데이터 스트림 보호, SPI/UART 인터페이스 암호화
+* **검증 방안**:
+
+  * 공개 벡터로 블록 암복호 테스트
+  * nonce 재사용 시 동작 확인 (에러 혹은 경고 로그)
+  * 부채널 패턴 제거 여부 체크 (TVLA 가능하면 병행)
+
+---
+
+## 17. 참고 링크 및 자료
+
+* 📄 [NIST Lightweight Crypto 표준 문서 (SP 800-232)](https://csrc.nist.gov/publications/detail/sp/800-232/final)
+* 🔐 [KISA 암호 키 관리 지침서 (한글)](https://www.kisa.or.kr/public/laws/laws_View.jsp?mode=view&p_No=259&b_No=259&d_No=106&c_No=63)
+* 🔬 [Side-Channel 공격 대응 가이드 (KISA)](https://www.kisa.or.kr/public/laws/laws_View.jsp?mode=view&p_No=266&b_No=266&d_No=128&c_No=63)
+* 📘 [PRESENT 구조 논문 원문 (CHES 2007)](https://link.springer.com/chapter/10.1007/978-3-540-74735-2_31)
+* 🧪 [TVLA 방법론 개요 (Test Vector Leakage Assessment)](https://csrc.nist.gov/CSRC/media/Presentations/Using-TVLA-to-Prove-That-Countermeasures-Work/images-media/7_Brenner.pdf)
+* 🛠️ [암호화 실습 사이트 (AES 등)](https://emn178.github.io/online-tools/aes.html)
+* 🧠 [해시 함수 개념 영상](https://www.youtube.com/watch?v=ZghMPWGXexs)
 
 
